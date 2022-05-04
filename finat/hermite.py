@@ -39,3 +39,32 @@ class Hermite(PhysicallyMappedElement, ScalarFiatElement):
             cur += d
 
         return ListTensor(M)
+
+
+class HighOrderHermite(PhysicallyMappedElement, ScalarFiatElement):
+    def __init__(self, cell, degree):
+        if cell.get_dimension() != 1:
+            raise ValueError("High-order Hermite element currently only implemented in 1 dimension")
+        if degree < 3:
+            raise ValueError("Degree must be at least 3 for high-order Hermite element")
+        super().__init__(FIAT.HighOrderHermite(cell, degree))
+        
+    def basis_transformation(self, coordinate_mapping):
+        Js = [coordinate_mapping.jacobian_at(vertex)
+              for vertex in self.cell.get_vertices()]
+
+        h = coordinate_mapping.cell_size()
+
+        numbf = self.space_dimension()
+
+        M = numpy.eye(numbf, dtype=object)
+
+        for multiindex in numpy.ndindex(M.shape):
+            M[multiindex] = Literal(M[multiindex])
+
+        J = Js[0]
+        M[2, 2] = J[1, 1] / h[0]
+        J = Js[1]
+        M[self.degree + 1, self.degree + 1] = J[1, 1] / h[1]
+
+        return ListTensor(M)
